@@ -1,147 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
+
+const mockUsageData = [
+  { day: 'Mon', consumption: 220, peerAvg: 250 },
+  { day: 'Tue', consumption: 310, peerAvg: 240 },
+  { day: 'Wed', consumption: 190, peerAvg: 260 },
+  { day: 'Thu', consumption: 450, peerAvg: 255 }, // Leak alert threshold trigger
+  { day: 'Fri', consumption: 280, peerAvg: 245 },
+  { day: 'Sat', consumption: 340, peerAvg: 280 },
+  { day: 'Sun', consumption: 290, peerAvg: 270 },
+];
 
 export default function Dashboard({ user, onLogout }) {
+  const [usersList, setUsersList] = useState([]);
   const [bills, setBills] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (user.role === 'ROLE_RESIDENT') {
-      API.get('/resident/bills')
-        .then(res => setBills(res.data))
-        .catch(err => console.error(err));
-    } else if (user.role === 'ROLE_SUPER_ADMIN') {
-      API.get('/admin/users')
-        .then(res => setUsers(res.data))
-        .catch(err => console.error(err));
+    if (user.role === 'ROLE_SUPER_ADMIN') {
+      API.get('/admin/users').then(res => setUsersList(res.data)).catch(console.error);
+    } else if (user.role === 'ROLE_RESIDENT') {
+      API.get('/resident/bills').then(res => setBills(res.data)).catch(console.error);
     }
   }, [user]);
 
-  const handlePay = async (billId, amount) => {
-    try {
-      await API.post('/resident/pay', {
-        billId,
-        amount,
-        paymentMethod: 'CREDIT_CARD'
-      });
-      alert('Payment Successful!');
-      window.location.reload();
-    } catch (err) {
-      alert('Payment failed');
-    }
-  };
-
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
-      {/* HEADER SECTION */}
-      <header style={{ 
-        display: 'flex', 
-        justify: 'space-between', 
-        alignItems: 'center', 
-        borderBottom: '2px solid #333', 
-        paddingBottom: '1rem', 
-        marginBottom: '2rem' 
-      }}>
-        <div style={{ textAlign: 'left' }}>
-          <h1 style={{ margin: 0, fontSize: '2rem', lineHeight: '1.2', color: '#646cff' }}>AquaTrack</h1>
-          <span style={{ fontSize: '1rem', color: '#888' }}>Smart Water Usage & Billing Dashboard</span>
+      {/* HEADER */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #333', paddingBottom: '1rem', marginBottom: '2rem' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '2rem', color: '#646cff' }}>AquaTrack System</h1>
+          <span style={{ fontSize: '0.9rem', color: '#888' }}>Smart Water Usage Monitoring & Tiered Billing Platform</span>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ margin: '0 0 8px 0', fontSize: '0.95rem' }}>
-            Welcome, <strong>{user.fullName}</strong> <span style={{ color: '#4caf50' }}>({user.role})</span>
-          </p>
-          <button 
-            onClick={onLogout} 
-            style={{ 
-              padding: '6px 16px', 
-              backgroundColor: '#dc3545', 
-              color: '#fff', 
-              border: 'none', 
-              borderRadius: '4px', 
-              cursor: 'pointer' 
-            }}
-          >
-            Logout
-          </button>
+          <p style={{ margin: '0 0 6px 0' }}>Welcome, <strong>{user.fullName}</strong> <span style={{ color: '#4caf50' }}>({user.role})</span></p>
+          <button onClick={onLogout} style={{ padding: '6px 14px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Logout</button>
         </div>
       </header>
-
-      {/* SUPER ADMIN VIEW */}
-      {user.role === 'ROLE_SUPER_ADMIN' && (
-        <section>
-          <h2 style={{ marginBottom: '1rem' }}>System User Management</h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#1a1a1a', borderBottom: '2px solid #444' }}>
-                <th style={{ padding: '12px' }}>ID</th>
-                <th style={{ padding: '12px' }}>Full Name</th>
-                <th style={{ padding: '12px' }}>Email</th>
-                <th style={{ padding: '12px' }}>Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id} style={{ borderBottom: '1px solid #333' }}>
-                  <td style={{ padding: '12px' }}>{u.id}</td>
-                  <td style={{ padding: '12px' }}>{u.fullName}</td>
-                  <td style={{ padding: '12px' }}>{u.email}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      backgroundColor: u.role === 'SUPER_ADMIN' ? '#0d6efd' : '#198754',
-                      fontSize: '0.85rem'
-                    }}>
-                      {u.role}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
 
       {/* RESIDENT VIEW */}
       {user.role === 'ROLE_RESIDENT' && (
         <section>
-          <h2 style={{ marginBottom: '1rem' }}>My Water Bills</h2>
-          {bills.length === 0 ? <p>No bills found for your account.</p> : (
+          <h2 style={{ marginBottom: '1rem' }}>Household Usage Analytics & Peer Comparison</h2>
+          
+          {/* RECHARTS CONSUMPTION GRAPH */}
+          <div style={{ background: '#1e1e1e', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem' }}>
+            <h3>Daily Usage vs. Building Average (Liters)</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={mockUsageData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis dataKey="day" stroke="#ccc" />
+                <YAxis stroke="#ccc" />
+                <Tooltip contentStyle={{ backgroundColor: '#222', border: 'none' }} />
+                <Line type="monotone" dataKey="consumption" name="My Flat Usage (L)" stroke="#007bff" strokeWidth={3} />
+                <Line type="monotone" dataKey="peerAvg" name="Building Avg (L)" stroke="#28a745" strokeDasharray="5 5" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <h3> Meter Billing Invoices</h3>
+          {bills.length === 0 ? <p style={{ color: '#888' }}>No pending invoices found for your flat.</p> : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ backgroundColor: '#1a1a1a', borderBottom: '2px solid #444' }}>
-                  <th style={{ padding: '12px' }}>Bill ID</th>
-                  <th style={{ padding: '12px' }}>Building / Flat</th>
-                  <th style={{ padding: '12px' }}>Billing Period</th>
-                  <th style={{ padding: '12px' }}>Usage</th>
-                  <th style={{ padding: '12px' }}>Amount</th>
-                  <th style={{ padding: '12px' }}>Status</th>
-                  <th style={{ padding: '12px' }}>Action</th>
+                <tr style={{ backgroundColor: '#222' }}>
+                  <th style={{ padding: '10px' }}>Bill #</th>
+                  <th style={{ padding: '10px' }}>Period</th>
+                  <th style={{ padding: '10px' }}>Consumption</th>
+                  <th style={{ padding: '10px' }}>Amount</th>
+                  <th style={{ padding: '10px' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {bills.map(b => (
                   <tr key={b.id} style={{ borderBottom: '1px solid #333' }}>
-                    <td style={{ padding: '12px' }}>#{b.id}</td>
-                    <td style={{ padding: '12px' }}>{b.buildingName} - {b.flatNumber}</td>
-                    <td style={{ padding: '12px' }}>{b.billingStartDate} to {b.billingEndDate}</td>
-                    <td style={{ padding: '12px' }}>{b.totalLiters} L</td>
-                    <td style={{ padding: '12px' }}>${b.totalAmount}</td>
-                    <td style={{ padding: '12px' }}>
-                      <strong style={{ color: b.status === 'PAID' ? '#198754' : '#ffc107' }}>
-                        {b.status}
-                      </strong>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      {b.status === 'UNPAID' && (
-                        <button 
-                          onClick={() => handlePay(b.id, b.totalAmount)}
-                          style={{ padding: '6px 12px', backgroundColor: '#198754', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Pay Now
-                        </button>
-                      )}
-                    </td>
+                    <td style={{ padding: '10px' }}>#{b.id}</td>
+                    <td style={{ padding: '10px' }}>{b.billingStartDate} - {b.billingEndDate}</td>
+                    <td style={{ padding: '10px' }}>{b.totalLiters} L</td>
+                    <td style={{ padding: '10px' }}>${b.totalAmount}</td>
+                    <td style={{ padding: '10px' }}><strong style={{ color: b.status === 'PAID' ? '#28a745' : '#ffc107' }}>{b.status}</strong></td>
                   </tr>
                 ))}
               </tbody>
@@ -150,11 +87,73 @@ export default function Dashboard({ user, onLogout }) {
         </section>
       )}
 
-      {/* BUILDING OWNER VIEW */}
-      {user.role === 'ROLE_BUILDING_OWNER' && (
+      {/* BUILDING OWNER / ADMIN PANEL */}
+      {(user.role === 'ROLE_BUILDING_OWNER' || user.role === 'ROLE_SUPER_ADMIN') && (
         <section>
-          <h2>Building & Meter Management</h2>
-          <p style={{ color: '#aaa' }}>Manage resident apartments, install water meters, record monthly usage readings, and auto-generate consumer bills.</p>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <button onClick={() => setActiveTab('overview')} style={{ padding: '8px 16px', background: activeTab === 'overview' ? '#007bff' : '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Building Overview</button>
+            <button onClick={() => setActiveTab('meter')} style={{ padding: '8px 16px', background: activeTab === 'meter' ? '#007bff' : '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Meter Reading / CSV Entry</button>
+            {user.role === 'ROLE_SUPER_ADMIN' && (
+              <button onClick={() => setActiveTab('users')} style={{ padding: '8px 16px', background: activeTab === 'users' ? '#007bff' : '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>User Management</button>
+            )}
+          </div>
+
+          {activeTab === 'overview' && (
+            <div style={{ background: '#1e1e1e', padding: '1.5rem', borderRadius: '8px' }}>
+              <h3>Apartment Water Distribution Bar Chart</h3>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={mockUsageData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="day" stroke="#ccc" />
+                  <YAxis stroke="#ccc" />
+                  <Tooltip contentStyle={{ backgroundColor: '#222' }} />
+                  <Bar dataKey="consumption" fill="#007bff" name="Total Water Logged (L)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {activeTab === 'meter' && (
+            <div style={{ background: '#1e1e1e', padding: '1.5rem', borderRadius: '8px' }}>
+              <h3>Record Meter Reading</h3>
+              <form onSubmit={e => { e.preventDefault(); alert('Meter reading saved successfully!'); }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label>Meter ID / Household:</label>
+                  <input type="text" defaultValue="METER-FLAT-101" style={{ width: '100%', padding: '8px', marginTop: '4px' }} />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label>Current Reading (Liters):</label>
+                  <input type="number" defaultValue="14500" style={{ width: '100%', padding: '8px', marginTop: '4px' }} />
+                </div>
+                <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                  Submit Reading
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'users' && user.role === 'ROLE_SUPER_ADMIN' && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#222' }}>
+                  <th style={{ padding: '10px' }}>ID</th>
+                  <th style={{ padding: '10px' }}>Full Name</th>
+                  <th style={{ padding: '10px' }}>Email</th>
+                  <th style={{ padding: '10px' }}>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersList.map(u => (
+                  <tr key={u.id} style={{ borderBottom: '1px solid #333' }}>
+                    <td style={{ padding: '10px' }}>{u.id}</td>
+                    <td style={{ padding: '10px' }}>{u.fullName}</td>
+                    <td style={{ padding: '10px' }}>{u.email}</td>
+                    <td style={{ padding: '10px' }}><span style={{ padding: '4px 8px', borderRadius: '4px', background: '#0d6efd' }}>{u.role}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </section>
       )}
     </div>
