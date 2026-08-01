@@ -1,6 +1,5 @@
 package com.aquatrack;
 
-import com.aquatrack.model.Role;
 import com.aquatrack.model.User;
 import com.aquatrack.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -19,20 +18,20 @@ public class SmartWaterApplication {
     @Bean
     public CommandLineRunner initDatabase(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            userRepository.findByEmail("admin@aquatrack.com").ifPresent(userRepository::delete);
+            // Seed Super Admin if not already present
+            if (userRepository.findByEmail("admin@aquatrack.com").isEmpty()) {
+                User admin = User.builder()
+                        .fullName("System Super Admin")
+                        .email("admin@aquatrack.com")
+                        .password(passwordEncoder.encode("admin123"))
+                        .phoneNumber("9999999999")
+                        .role(User.Role.SUPER_ADMIN)
+                        .approvalStatus("APPROVED")
+                        .build();
 
-            User admin = User.builder()
-                    .email("admin@aquatrack.com")
-                    .fullName("System Super Admin")
-                    .password(passwordEncoder.encode("admin123"))
-                    .role(Role.SUPER_ADMIN)
-                    .phoneNumber("9999999999")
-                    .build();
-
-            userRepository.save(admin);
-            System.out.println("==========================================================");
-            System.out.println(">>> SUCCESS: Created Super Admin (admin@aquatrack.com) <<<");
-            System.out.println("==========================================================");
+                userRepository.save(admin);
+                System.out.println(">>> Super Admin account initialized: admin@aquatrack.com");
+            }
         };
     }
 }
