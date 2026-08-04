@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Droplets, LayoutDashboard, Clock, XCircle, BarChart3, LogOut, Edit, Trash2, 
-  User, Send, DollarSign, FileText, Plus, Bell, CheckCircle, IndianRupee, Search
+  User, Send, DollarSign, FileText, Plus, Bell, CheckCircle, IndianRupee, Search, Truck, Settings
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
@@ -27,22 +27,41 @@ export default function Dashboard({ user, onLogout }) {
   const [invitations, setInvitations] = useState([]);
   const [invitationForm, setInvitationForm] = useState({ blockNo: '', flatNo: '', residentEmail: '' });
 
-  // Bill Generation State (Amount in Rupees ₹)
+  // Bill Generation State
   const [billForm, setBillForm] = useState({ meterId: 'MTR-101', prevReading: '12000', currReading: '14500', amountInRupees: '350' });
   const [issuedBills, setIssuedBills] = useState([
     { id: 101, blockNo: 'A', flatNo: '101', meterId: 'MTR-101', amountInRupees: 350, status: 'PENDING', date: '2026-07-31' },
     { id: 102, blockNo: 'A', flatNo: '102', meterId: 'MTR-102', amountInRupees: 420, status: 'PAID', date: '2026-07-28' }
   ]);
 
+  // --- PHASE 1: BULK WATER PURCHASE STATE ---
+  const [bulkPurchases, setBulkPurchases] = useState([]);
+  const [bulkForm, setBulkForm] = useState({
+    supplierType: 'TANKER',
+    volumeLiters: '',
+    unitCostPerLiter: ''
+  });
+
+  // --- PHASE 1: TIERED TARIFF TARIFF CONFIG STATE ---
+  const [tariffConfig, setTariffConfig] = useState({
+    baseVolumeKl: 10,
+    baseRatePerKl: 15,
+    tier2RatePerKl: 35
+  });
+
   // --- FILTERS & USAGE REPORTS ---
   const [selectedYear, setSelectedYear] = useState('2026');
   const [searchFlatNo, setSearchFlatNo] = useState('');
 
   const role = user?.role || 'ROLE_SUPER_ADMIN';
+  const apartmentName = user?.apartmentName || 'Green Heights';
 
-  // --- FETCH REAL POSTGRESQL DATA ON LOAD ---
+  // --- FETCH DATA FROM POSTGRESQL ON LOAD ---
   useEffect(() => {
     fetchUsersData();
+    if (role === 'ROLE_BUILDING_OWNER' || role === 'BUILDING_OWNER') {
+      fetchBulkPurchases();
+    }
   }, []);
 
   const fetchUsersData = async () => {
@@ -57,6 +76,15 @@ export default function Dashboard({ user, onLogout }) {
       }
     } catch (err) {
       console.error("Error fetching live data from PostgreSQL:", err);
+    }
+  };
+
+  const fetchBulkPurchases = async () => {
+    try {
+      const res = await API.get(`/billing/bulk-purchases/${apartmentName}`);
+      setBulkPurchases(res.data || []);
+    } catch (err) {
+      console.error("Error fetching bulk purchases:", err);
     }
   };
 
@@ -128,6 +156,60 @@ export default function Dashboard({ user, onLogout }) {
     setInvitationForm({ blockNo: '', flatNo: '', residentEmail: '' });
   };
 
+  // --- PHASE 1: BULK WATER PURCHASE SUBMIT ---
+  const handleAddBulkPurchase = async (e) => {
+    e.preventDefault();
+    const payload = {
+      apartmentName: apartmentName,
+      supplierType: bulkForm.supplierType,
+      volumeLiters: parseFloat(bulkForm.volumeLiters),
+      unitCostPerLiter: parseFloat(bulkForm.unitCostPerLiter),
+      totalCost: parseFloat(bulkForm.volumeLiters) * parseFloat(bulkForm.unitCostPerLiter)
+    };
+
+    try {
+      await API.post('/billing/bulk-purchase', payload);
+      alert('Bulk water purchase logged successfully!');
+      setBulkForm({ supplierType: 'TANKER', volumeLiters: '', unitCostPerLiter: '' });
+      fetchBulkPurchases();
+    } catch (err) {
+      alert('Failed to log bulk water purchase.');
+    }
+  };
+
+  // --- PHASE 1: SAVE TARIFF CONFIG ---
+  const handleSaveTariff = async (e) => {
+    e.preventDefault();
+    const payload = {
+      apartmentName: apartmentName,
+      baseVolumeKl: parseFloat(tariffConfig.baseVolumeKl),
+      baseRatePerKl: parseFloat(tariffConfig.baseRatePerKl),
+      tier2RatePerKl: parseFloat(tariffConfig.tier2RatePerKl)
+    };
+
+    try {
+      await API.post('/billing/tariff-config', payload);
+      alert('Tiered Tariff Configuration saved in PostgreSQL!');
+    } catch (err) {
+      alert('Failed to save tariff settings.');
+    }
+  };
+
+  // --- PHASE 1: CALCULATE TIERED BILL ---
+  const handleCalculateTieredBill = async (e) => {
+    e.preventDefault();
+    const consumptionLiters = (parseFloat(billForm.currReading) - parseFloat(billForm.prevReading));
+
+    try {
+      const res = await API.post(`/billing/calculate-tiered?apartmentName=${apartmentName}&consumptionLiters=${consumptionLiters}`);
+      const data = res.data;
+      setBillForm({ ...billForm, amountInRupees: data.totalAmountInRupees });
+      alert(`Tiered calculation complete!\nBase Charge: ₹${data.baseCharge}\nTier-2 Excess Charge: ₹${data.tier2Charge}\nTotal Bill: ₹${data.totalAmountInRupees}`);
+    } catch (err) {
+      alert("Error calculating tiered tariff.");
+    }
+  };
+
   const handleGenerateBill = (e) => {
     e.preventDefault();
     const newBill = {
@@ -140,13 +222,13 @@ export default function Dashboard({ user, onLogout }) {
       date: new Date().toLocaleDateString()
     };
     setIssuedBills([...issuedBills, newBill]);
-    alert(`Bill of ₹${billForm.amountInRupees} generated and issued to Meter ID: ${billForm.meterId}`);
+    alert(`Bill of ₹${billForm.amountInRupees} generated for Meter ID: ${billForm.meterId}`);
     setBillForm({ meterId: '', prevReading: '', currReading: '', amountInRupees: '' });
   };
 
   const handlePayBill = (billId) => {
     setIssuedBills(issuedBills.map(b => b.id === billId ? { ...b, status: 'PAID' } : b));
-    alert('Payment of ₹ successful!');
+    alert('Payment successful!');
   };
 
   // Sample Consumption Data
@@ -197,7 +279,13 @@ export default function Dashboard({ user, onLogout }) {
                   <User size={20} /> Profile & Invitations
                 </button>
                 <button onClick={() => setActiveTab('flatDetails')} style={navBtnStyle(activeTab === 'flatDetails')}>
-                  <LayoutDashboard size={20} /> Flat Details & CRUD
+                  <LayoutDashboard size={20} /> Flat Management
+                </button>
+                <button onClick={() => setActiveTab('bulkPurchase')} style={navBtnStyle(activeTab === 'bulkPurchase')}>
+                  <Truck size={20} /> Bulk Water Logistics
+                </button>
+                <button onClick={() => setActiveTab('tariffSettings')} style={navBtnStyle(activeTab === 'tariffSettings')}>
+                  <Settings size={20} /> Tiered Tariff Config
                 </button>
                 <button onClick={() => setActiveTab('billGen')} style={navBtnStyle(activeTab === 'billGen')}>
                   <FileText size={20} /> Bill Generation
@@ -394,47 +482,18 @@ export default function Dashboard({ user, onLogout }) {
               {activeTab === 'profile' && (
                 <section>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '1.5rem' }}>Building Owner Profile & Sent Invitations</h2>
-                  
                   <div style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '10px', marginBottom: '2rem' }}>
                     <p style={{ margin: '0 0 8px 0' }}><strong>Full Name:</strong> {user?.fullName || 'Property Owner'}</p>
                     <p style={{ margin: '0 0 8px 0' }}><strong>Email ID:</strong> {user?.email || 'owner@aquatrack.com'}</p>
                     <p style={{ margin: '0 0 8px 0' }}><strong>Apartment Name:</strong> {user?.apartmentName || 'Green Heights'}</p>
                     <p style={{ margin: '0' }}><strong>Block No:</strong> {user?.blockNo || 'A'} | <strong>Flat No:</strong> {user?.flatNo || '101'}</p>
                   </div>
-
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', marginBottom: '1rem' }}>Sent Resident Invitations</h3>
-                  {invitations.length === 0 ? <p style={{ color: '#64748b' }}>No invitation codes generated yet.</p> : (
-                    <table style={tableStyle}>
-                      <thead>
-                        <tr style={thStyle}>
-                          <th style={{ padding: '12px' }}>BLOCK</th>
-                          <th style={{ padding: '12px' }}>FLAT NO</th>
-                          <th style={{ padding: '12px' }}>RESIDENT EMAIL</th>
-                          <th style={{ padding: '12px' }}>INVITATION CODE</th>
-                          <th style={{ padding: '12px' }}>STATUS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {invitations.map((inv, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '12px' }}>{inv.blockNo}</td>
-                            <td style={{ padding: '12px', fontWeight: '600' }}>{inv.flatNo}</td>
-                            <td style={{ padding: '12px' }}>{inv.residentEmail}</td>
-                            <td style={{ padding: '12px', color: '#0284c7', fontWeight: '700' }}>{inv.code}</td>
-                            <td style={{ padding: '12px' }}><span style={{ padding: '4px 10px', backgroundColor: '#dcfce7', color: '#15803d', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' }}>{inv.status}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
                 </section>
               )}
 
               {activeTab === 'flatDetails' && (
                 <section>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '1.5rem' }}>Flat Management & CRUD</h2>
-                  
-                  {/* Add / Edit Flat Form */}
                   <div style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '10px', marginBottom: '2rem' }}>
                     <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>{isEditingFlat ? 'Edit Flat Details' : 'Add New Flat'}</h3>
                     <form onSubmit={handleSaveFlat} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
@@ -449,7 +508,6 @@ export default function Dashboard({ user, onLogout }) {
                     </form>
                   </div>
 
-                  {/* Flats List Table */}
                   <table style={tableStyle}>
                     <thead>
                       <tr style={thStyle}>
@@ -457,7 +515,6 @@ export default function Dashboard({ user, onLogout }) {
                         <th style={{ padding: '12px' }}>FLAT NO</th>
                         <th style={{ padding: '12px' }}>METER ID</th>
                         <th style={{ padding: '12px' }}>RESIDENT NAME</th>
-                        <th style={{ padding: '12px' }}>RESIDENT EMAIL</th>
                         <th style={{ padding: '12px', textAlign: 'center' }}>ACTIONS</th>
                       </tr>
                     </thead>
@@ -468,7 +525,6 @@ export default function Dashboard({ user, onLogout }) {
                           <td style={{ padding: '12px', fontWeight: '600' }}>{f.flatNo}</td>
                           <td style={{ padding: '12px', color: '#0284c7', fontWeight: '600' }}>{f.meterId}</td>
                           <td style={{ padding: '12px' }}>{f.residentName}</td>
-                          <td style={{ padding: '12px' }}>{f.residentEmail}</td>
                           <td style={{ padding: '12px', textAlign: 'center' }}>
                             <button onClick={() => handleEditFlat(f)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0284c7', marginRight: '8px' }}><Edit size={18} /></button>
                             <button onClick={() => handleDeleteFlat(f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={18} /></button>
@@ -477,6 +533,98 @@ export default function Dashboard({ user, onLogout }) {
                       ))}
                     </tbody>
                   </table>
+                </section>
+              )}
+
+              {/* PHASE 1: BULK WATER PURCHASES TAB */}
+              {activeTab === 'bulkPurchase' && (
+                <section>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '1.5rem' }}>Bulk Water Procurement Logistics</h2>
+                  
+                  <div style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '10px', marginBottom: '2rem', maxWidth: '600px' }}>
+                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>Log Water Delivery (Tanker / Municipal)</h3>
+                    <form onSubmit={handleAddBulkPurchase}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={lblStyle}>SUPPLIER TYPE</label>
+                        <select value={bulkForm.supplierType} onChange={e => setBulkForm({ ...bulkForm, supplierType: e.target.value })} style={inStyle}>
+                          <option value="TANKER">Private Water Tanker Delivery</option>
+                          <option value="MUNICIPAL">Municipal Corporation Supply</option>
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div>
+                          <label style={lblStyle}>VOLUME (LITERS)</label>
+                          <input type="number" placeholder="10000" required value={bulkForm.volumeLiters} onChange={e => setBulkForm({ ...bulkForm, volumeLiters: e.target.value })} style={inStyle} />
+                        </div>
+                        <div>
+                          <label style={lblStyle}>UNIT COST (PER LITER ₹)</label>
+                          <input type="number" step="0.01" placeholder="0.25" required value={bulkForm.unitCostPerLiter} onChange={e => setBulkForm({ ...bulkForm, unitCostPerLiter: e.target.value })} style={inStyle} />
+                        </div>
+                      </div>
+
+                      <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}>
+                        Log Procurement Record
+                      </button>
+                    </form>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', marginBottom: '1rem' }}>Procurement History in PostgreSQL</h3>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr style={thStyle}>
+                        <th style={{ padding: '12px' }}>DATE</th>
+                        <th style={{ padding: '12px' }}>SUPPLIER TYPE</th>
+                        <th style={{ padding: '12px' }}>VOLUME (LITERS)</th>
+                        <th style={{ padding: '12px' }}>UNIT COST (₹/L)</th>
+                        <th style={{ padding: '12px' }}>TOTAL COST (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkPurchases.length === 0 ? (
+                        <tr><td colSpan="5" style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>No bulk water deliveries logged yet.</td></tr>
+                      ) : (
+                        bulkPurchases.map(b => (
+                          <tr key={b.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px' }}>{new Date(b.purchaseDate).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px', fontWeight: '600' }}>{b.supplierType}</td>
+                            <td style={{ padding: '12px' }}>{b.volumeLiters} L</td>
+                            <td style={{ padding: '12px' }}>₹{b.unitCostPerLiter}</td>
+                            <td style={{ padding: '12px', fontWeight: '700', color: '#0284c7' }}>₹{b.totalCost}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+
+              {/* PHASE 1: TIERED TARIFF CONFIG TAB */}
+              {activeTab === 'tariffSettings' && (
+                <section style={{ maxWidth: '520px' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a', marginBottom: '1.5rem' }}>Tiered Rate Configurator</h2>
+                  <div style={{ backgroundColor: '#ffffff', padding: '2rem', borderRadius: '10px' }}>
+                    <form onSubmit={handleSaveTariff}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={lblStyle}>BASE VOLUME TIER (kL / 1000 Liters)</label>
+                        <input type="number" required value={tariffConfig.baseVolumeKl} onChange={e => setTariffConfig({ ...tariffConfig, baseVolumeKl: e.target.value })} style={inStyle} />
+                      </div>
+
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={lblStyle}>BASE TIER RATE (₹ PER kL)</label>
+                        <input type="number" required value={tariffConfig.baseRatePerKl} onChange={e => setTariffConfig({ ...tariffConfig, baseRatePerKl: e.target.value })} style={inStyle} />
+                      </div>
+
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ ...lblStyle, color: '#ef4444' }}>TIER-2 RATE BEYOND BASE (₹ PER kL)</label>
+                        <input type="number" required value={tariffConfig.tier2RatePerKl} onChange={e => setTariffConfig({ ...tariffConfig, tier2RatePerKl: e.target.value })} style={{ ...inStyle, borderColor: '#ef4444' }} />
+                      </div>
+
+                      <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}>
+                        Save Tariff Policy
+                      </button>
+                    </form>
+                  </div>
                 </section>
               )}
 
@@ -493,13 +641,17 @@ export default function Dashboard({ user, onLogout }) {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                         <div>
                           <label style={lblStyle}>PREVIOUS READING (LITERS)</label>
-                          <input type="number" placeholder="10000" required value={billForm.prevReading} onChange={e => setBillForm({ ...billForm, prevReading: e.target.value })} style={inStyle} />
+                          <input type="number" placeholder="12000" required value={billForm.prevReading} onChange={e => setBillForm({ ...billForm, prevReading: e.target.value })} style={inStyle} />
                         </div>
                         <div>
                           <label style={lblStyle}>CURRENT READING (LITERS)</label>
-                          <input type="number" placeholder="12500" required value={billForm.currReading} onChange={e => setBillForm({ ...billForm, currReading: e.target.value })} style={inStyle} />
+                          <input type="number" placeholder="14500" required value={billForm.currReading} onChange={e => setBillForm({ ...billForm, currReading: e.target.value })} style={inStyle} />
                         </div>
                       </div>
+
+                      <button type="button" onClick={handleCalculateTieredBill} style={{ width: '100%', padding: '10px', backgroundColor: '#0f172a', color: '#38bdf8', border: '1px solid #38bdf8', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', marginBottom: '1rem' }}>
+                        ⚡ Auto-Calculate Tiered Amount
+                      </button>
 
                       <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ ...lblStyle, color: '#0284c7' }}>AMOUNT IN RUPEES (₹)</label>
@@ -548,9 +700,7 @@ export default function Dashboard({ user, onLogout }) {
                 <section>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a' }}>Water Usage Search Report</h2>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <input type="text" placeholder="Filter by Flat No (e.g. 101)" value={searchFlatNo} onChange={e => setSearchFlatNo(e.target.value)} style={{ ...inStyle, width: '220px' }} />
-                    </div>
+                    <input type="text" placeholder="Filter by Flat No (e.g. 101)" value={searchFlatNo} onChange={e => setSearchFlatNo(e.target.value)} style={{ ...inStyle, width: '220px' }} />
                   </div>
                   <div style={{ backgroundColor: '#ffffff', padding: '2rem', borderRadius: '10px' }}>
                     <ResponsiveContainer width="100%" height={320}>
