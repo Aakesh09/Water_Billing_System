@@ -1,58 +1,48 @@
-import React from 'react';
+﻿import React from 'react';
+import { Link } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 
-export default function Home({ onNavigate }) {
+export default function Home() {
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#ffffff', color: '#1a1a1a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Top Navigation Bar */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 3rem', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem', fontWeight: '700', color: '#0284c7' }}>
-          <Droplets size={28} />
-          <span>AquaTrack</span>
+      {/* Top Header */}
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 3rem', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Droplets size={28} color="#0284c7" />
+          <span style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0284c7' }}>AquaTrack</span>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button 
-            onClick={() => onNavigate('login')} 
-            style={{ padding: '8px 22px', border: '1px solid #0284c7', backgroundColor: 'transparent', color: '#0284c7', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
-          >
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Link to="/login" style={{ padding: '8px 20px', border: '1px solid #0284c7', color: '#0284c7', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '0.9rem' }}>
             Login
-          </button>
-          <button 
-            onClick={() => onNavigate('register')} 
-            style={{ padding: '8px 22px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
-          >
+          </Link>
+          <Link to="/register" style={{ padding: '8px 20px', backgroundColor: '#0284c7', color: '#ffffff', textDecoration: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '0.9rem' }}>
             Register
-          </button>
+          </Link>
         </div>
-      </nav>
+      </header>
 
-      {/* Hero Center Section */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '0 2rem' }}>
-        <div style={{ backgroundColor: '#e0f2fe', padding: '1.25rem', borderRadius: '50%', marginBottom: '1.25rem', color: '#0284c7' }}>
-          <Droplets size={48} />
+      {/* Main Hero Banner */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ padding: '20px', backgroundColor: '#e0f2fe', borderRadius: '50%', marginBottom: '2rem' }}>
+          <Droplets size={48} color="#0284c7" />
         </div>
-        
-        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', lineHeight: '1.3', margin: '0 0 1rem 0', color: '#0f172a', maxWidth: '850px' }}>
+
+        <h1 style={{ fontSize: '3rem', fontWeight: '900', color: '#0f172a', maxWidth: '800px', margin: '0 0 1rem 0', lineHeight: '1.2' }}>
           Smart Water Usage & Consumer Billing System
         </h1>
-        
-        <blockquote style={{ fontSize: '1.1rem', fontStyle: 'italic', fontWeight: '500', color: '#475569', maxWidth: '620px', margin: '0 0 2rem 0', lineHeight: '1.6' }}>
+
+        <p style={{ fontSize: '1.1rem', fontStyle: 'italic', color: '#475569', maxWidth: '650px', margin: '0 0 2.5rem 0', lineHeight: '1.6' }}>
           "Water is our most vital resource — track every drop, eliminate leaks, and build a sustainable future with absolute transparency."
-        </blockquote>
-        
-        <div>
-          <button 
-            onClick={() => onNavigate('login')} 
-            style={{ padding: '12px 36px', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}
-          >
-            Get Started
-          </button>
-        </div>
+        </p>
+
+        <Link to="/login" style={{ padding: '14px 36px', backgroundColor: '#0284c7', color: '#ffffff', textDecoration: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '1rem', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.3)' }}>
+          Get Started
+        </Link>
       </main>
 
       {/* Footer */}
-      <footer style={{ textAlign: 'center', padding: '1rem', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>
+      <footer style={{ textAlign: 'center', padding: '1.5rem', color: '#64748b', fontSize: '0.85rem', borderTop: '1px solid #f1f5f9' }}>
         © 2026 AquaTrack. All rights reserved.
       </footer>
     </div>

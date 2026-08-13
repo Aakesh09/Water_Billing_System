@@ -1,35 +1,44 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // 'home', 'login', 'register'
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('aquatrack_user');
+    const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const handleLogout = () => {
-    localStorage.removeItem('aquatrack_user');
-    setUser(null);
-    setCurrentPage('home');
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  // If user is logged in, render the Dashboard directly
-  if (user) {
-    return <Dashboard user={user} onLogout={handleLogout} />;
-  }
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
 
-  // Guest navigation
-  switch (currentPage) {
-    case 'login':
-      return <Login onLogin={(userData) => setUser(userData)} onNavigate={(page) => setCurrentPage(page)} />;
-    case 'register':
-      return <Register onSwitchToLogin={() => setCurrentPage('login')} />;
-    case 'home':
-    default:
-      return <Home onNavigate={(page) => setCurrentPage(page)} />;
-  }
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} 
+        />
+        <Route 
+          path="/register" 
+          element={<Register />} 
+        />
+        <Route 
+          path="/dashboard" 
+          element={user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }

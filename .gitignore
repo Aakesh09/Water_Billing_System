@@ -1,8 +1,15 @@
-﻿/backend/target/
-/backend/.mvn/
-/backend/mvnw
-/backend/mvnw.cmd
-/frontend/node_modules/
-/frontend/dist/
+﻿# Backend
+backend/target/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/.factorypath
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# General
 .DS_Store
 *.log
