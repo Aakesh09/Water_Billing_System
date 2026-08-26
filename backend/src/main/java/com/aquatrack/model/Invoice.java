@@ -1,62 +1,53 @@
 package com.aquatrack.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
+import lombok.*;
+import java.time.LocalDate;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "invoices")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Invoice {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "cycle_id", nullable = false)
     private Long cycleId;
-
-    @Column(name = "apartment_name", nullable = false)
+    private String invoiceNumber;
     private String apartmentName;
-
-    @Column(name = "flat_no", nullable = false)
-    private String flatNo;
-
-    @Column(name = "block_no")
     private String blockNo;
-
-    @Column(name = "meter_id")
+    private String flatNo;
     private String meterId;
+    private String residentName;
+    private String residentEmail;
 
-    @Column(name = "metered_consumption_liters")
+    private Double previousReading;
+    private Double currentReading;
+    private Double totalVolumeLiters;
     private Double meteredConsumptionLiters;
-
-    @Column(name = "tiered_base_charge")
+    
     private Double tieredBaseCharge;
-
-    @Column(name = "shared_bulk_allocation")
     private Double sharedBulkAllocation;
-
-    @Column(name = "total_amount_rupees", nullable = false)
+    private Double sharedCostAmount;
+    private Double sharedSurcharge;
+    private Double bulkAdjustmentCost;
+    private Double individualCostAmount;
+    
     private Double totalAmountRupees;
-
-    @Column(name = "payment_status", nullable = false) // "PENDING", "PAID"
-    private String paymentStatus;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if (this.paymentStatus == null) {
-            this.paymentStatus = "PENDING";
-        }
-    }
+    private Double totalAmount;
+    
+    private Double tier1Units;
+    private Double tier1Amount;
+    private Double tier2Units;
+    private Double tier2Amount;
+    
+    private String status;
+    private String paymentStatus; // PENDING, PAID
+    
+    private LocalDate billingDate;
+    private LocalDate dueDate;
 }

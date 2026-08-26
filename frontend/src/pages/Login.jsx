@@ -61,7 +61,7 @@ export default function Login({ onLogin }) {
       {/* Balanced 40% Left Sidebar */}
       <div style={{ width: '45%', backgroundColor: '#080d1a', color: '#ffffff', padding: '3rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link to="/" style={{ padding: '8px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link to="/" style={{ padding: '8px', backgroundColor: '#dde1e8', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <HomeIcon size={20} color="#94a3b8" />
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -70,13 +70,13 @@ export default function Login({ onLogin }) {
           </div>
         </div>
 
-        <div style={{ margin: 'auto 0', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2.0rem', fontWeight: '900', lineHeight: '1.25', letterSpacing: '-0.02em', maxWidth: '420px', margin: '0 auto' }}>
-            Smart Water Consumption Analytics and Billing System
-          </h1>
+        <div style={{ color: '#ffffff', zIndex: 10 }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: '800', color: '#ffffff', lineHeight: 1.3, marginBottom: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              Smart Water Consumption Analytics and Billing System
+    </h2>
         </div>
 
-        <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+        <div style={{ textAlign: 'center', color: '#ecf1f7', fontSize: '0.85rem' }}>
           © 2026 AquaTrack
         </div>
       </div>

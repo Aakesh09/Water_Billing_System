@@ -5,6 +5,7 @@ import com.aquatrack.model.User;
 import com.aquatrack.repository.InvitationRepository;
 import com.aquatrack.repository.UserRepository;
 import com.aquatrack.security.jwt.JwtUtils;
+import com.aquatrack.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,9 @@ public class AuthController {
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Autowired
+    private EmailService emailService;
 
     public static class LoginRequest {
         private String email;
@@ -98,6 +102,11 @@ public class AuthController {
     public ResponseEntity<?> createInvitation(@RequestBody Invitation invitation) {
         invitation.setIsUsed(false);
         Invitation saved = invitationRepository.save(invitation);
+
+        // Dispatch Email directly to resident
+        String inviteLink = "http://localhost:5173/register?code=" + saved.getCode();
+        emailService.sendInvitationEmail(saved.getResidentEmail(), saved.getResidentName(), saved.getCode(), inviteLink);
+
         return ResponseEntity.ok(saved);
     }
 
