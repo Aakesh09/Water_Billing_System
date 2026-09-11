@@ -1,17 +1,14 @@
-# Java / Maven
 backend/target/
 backend/.mvn/
 backend/*.log
 backend/.idea/
 backend/*.iml
 
-# Node / Vite
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/*.log
 
-# Environment & OS
 .env
 .DS_Store
 Thumbs.db
